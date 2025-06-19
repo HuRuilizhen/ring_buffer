@@ -86,7 +86,8 @@ size_t RingBuffer<T>::getSize() const {
 
 template <typename T>
 void RingBuffer<T>::print() const {
-  for (int i = 0; i < size; i++) std::cout << buffer[head + i] << " ";
+  for (size_t i = 0; i < size; i++)
+    std::cout << buffer[(head + i) % capacity] << " ";
   std::cout << std::endl;
 }
 
