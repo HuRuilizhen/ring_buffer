@@ -2,8 +2,8 @@
 /CMakeFiles/
 /CMakeCache.txt
 /Makefile
+/.cache/
 /*.o
 /*.a
 *.swp
 *.out
-ring_buffer_example
