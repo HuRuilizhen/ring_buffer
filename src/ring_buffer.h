@@ -41,7 +41,7 @@ RingBuffer<T>::RingBuffer(size_t capacity)
       tail(0),
       buffer(std::make_unique<T[]>(capacity)) {
   if (capacity == 0)
-    throw std::invalid_argument("capacity of ring buffer must greater than 0");
+    throw std::invalid_argument("capacity of ring buffer must be greater than 0");
 }
 
 template <typename T>
