@@ -13,7 +13,16 @@ add_executable(ring_buffer_example example/main.cc)
 target_include_directories(ring_buffer_example PRIVATE src)
 
 enable_testing()
-find_package(GTest REQUIRED)
+
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+)
+
+# Prevent overriding parent project's compiler/linker options
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
 add_executable(ring_buffer_test tests/ring_buffer_test.cc)
 target_include_directories(ring_buffer_test PRIVATE src)
