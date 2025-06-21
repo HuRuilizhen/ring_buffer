@@ -1,6 +1,6 @@
 #include <string>
 
-#include "ring_buffer.h"
+#include "ring_buffer/ring_buffer.h"
 
 int main(int argc, char *argv[]) {
   RingBuffer::RingBuffer<std::string> buffer(3);
