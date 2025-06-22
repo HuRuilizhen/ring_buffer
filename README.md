@@ -28,7 +28,7 @@ Then run the build and optionally install:
 ```bash
 cmake -S . -B build
 cmake --build build
-cmake --install build
+sudo cmake --install build
 ```
 
 ### Running the Example

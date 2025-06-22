@@ -18,22 +18,26 @@ target_include_directories(ring_buffer
 add_executable(ring_buffer_example example/main.cc)
 target_link_libraries(ring_buffer_example PRIVATE ring_buffer)
 
-enable_testing()
+option(ENABLE_TESTS "Enable tests" ON)
 
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
-)
-
-# Prevent overriding parent project's compiler/linker options
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-add_executable(ring_buffer_test tests/ring_buffer_test.cc)
-target_link_libraries(ring_buffer_test PRIVATE ring_buffer GTest::gtest_main)
-
-add_test(NAME ring_buffer_test COMMAND ring_buffer_test)
+if(ENABLE_TESTS)
+    message(STATUS "Tests enabled")
+    
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+    enable_testing()
+    
+    add_executable(ring_buffer_test tests/ring_buffer_test.cc)
+    target_link_libraries(ring_buffer_test PRIVATE ring_buffer GTest::gtest_main)
+    add_test(NAME ring_buffer_test COMMAND ring_buffer_test)
+endif(ENABLE_TESTS)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
