@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
+#include <new>
 #include <span>
 #include <stdexcept>
 
@@ -11,14 +12,22 @@ namespace RingBuffer {
 template <typename T>
 class RingBuffer {
  private:
-  std::unique_ptr<T[]> buffer;
+  struct Deleter {
+    std::size_t alignment;
+    void operator()(T *ptr) const noexcept {
+      ::operator delete[](ptr, std::align_val_t(alignment));
+    }
+  };
+
+  std::unique_ptr<T[], Deleter> buffer;
   size_t capacity;
   size_t size;
   size_t head;
   size_t tail;
+  std::size_t alignment;
 
  public:
-  explicit RingBuffer(size_t capacity);
+  explicit RingBuffer(size_t capacity, std::size_t align = alignof(T));
   ~RingBuffer() = default;
 
   void push(const T &value);
@@ -34,15 +43,19 @@ class RingBuffer {
 };
 
 template <typename T>
-RingBuffer<T>::RingBuffer(size_t capacity)
+RingBuffer<T>::RingBuffer(size_t capacity, std::size_t align)
     : capacity(capacity),
       size(0),
       head(0),
       tail(0),
-      buffer(std::make_unique<T[]>(capacity)) {
+      alignment(align),
+      buffer(nullptr, Deleter{align}) {
   if (capacity == 0)
     throw std::invalid_argument(
         "capacity of ring buffer must be greater than 0");
+  T *ptr = static_cast<T *>(
+      ::operator new[](capacity * sizeof(T), std::align_val_t(align)));
+  buffer.reset(ptr);
 }
 
 template <typename T>
