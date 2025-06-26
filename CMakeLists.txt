@@ -27,8 +27,16 @@ target_include_directories(ring_buffer_mutex
     $<INSTALL_INTERFACE:include>
 )
 
-add_executable(ring_buffer_example example/main.cc)
-target_link_libraries(ring_buffer_example PRIVATE ring_buffer)
+
+option(ENABLE_BENCHMARKS "Enable benchmarks" ON)
+
+if(ENABLE_BENCHMARKS)
+    add_executable(ring_buffer_benchmark
+        benchmarks/benchmark_main.cc
+        benchmarks/benchmark_atomic.cc
+        benchmarks/benchmark_mutex.cc)
+    target_link_libraries(ring_buffer_benchmark PRIVATE ring_buffer_atomic ring_buffer_mutex)
+endif()
 
 option(ENABLE_TESTS "Enable tests" ON)
 

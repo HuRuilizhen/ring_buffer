@@ -1,7 +1,7 @@
 # ring_buffer
 
-A simple ring buffer implementation with accompanying example and
-GoogleTest-based unit tests.
+A simple ring buffer implementation with GoogleTest-based unit tests
+and basic benchmarks.
 
 ## Build Instructions
 
@@ -31,12 +31,13 @@ cmake --build build
 sudo cmake --install build
 ```
 
-### Running the Example
 
-After building, run the example program:
+### Running the Benchmark
+
+After building, execute the benchmark program:
 
 ```bash
-./build/bin/ring_buffer_example
+./build/bin/ring_buffer_benchmark
 ```
 
 ### Running Tests

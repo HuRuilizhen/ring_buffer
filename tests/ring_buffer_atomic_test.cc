@@ -2,6 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <thread>
+#include <vector>
+
 TEST(RingBufferAtomicTest, ConstructorInvalid) {
   EXPECT_THROW(RingBuffer::RingBufferAtomic<int> buffer(0),
                std::invalid_argument);
@@ -52,6 +56,49 @@ TEST(RingBufferAtomicTest, WrapAround) {
   EXPECT_EQ(buffer.pop(), 3);
   EXPECT_EQ(buffer.pop(), 4);
   EXPECT_EQ(buffer.pop(), 5);
+}
+
+TEST(RingBufferAtomicTest, SPSC) {
+  constexpr int iterations = 10000;
+  RingBuffer::RingBufferAtomic<int> buffer(128);
+
+  std::thread producer([&]() {
+    for (int i = 0; i < iterations; ++i) {
+      while (true) {
+        try {
+          buffer.push(i);
+          break;
+        } catch (const std::overflow_error &) {
+          std::this_thread::yield();
+        }
+      }
+    }
+  });
+
+  std::vector<int> results;
+  results.reserve(iterations);
+  std::thread consumer([&]() {
+    for (int i = 0; i < iterations; ++i) {
+      int value;
+      while (true) {
+        try {
+          value = buffer.pop();
+          break;
+        } catch (const std::underflow_error &) {
+          std::this_thread::yield();
+        }
+      }
+      results.push_back(value);
+    }
+  });
+
+  producer.join();
+  consumer.join();
+
+  for (int i = 0; i < iterations; ++i) {
+    EXPECT_EQ(results[i], i);
+  }
+  EXPECT_TRUE(buffer.isEmpty());
 }
 
 int main(int argc, char **argv) {
