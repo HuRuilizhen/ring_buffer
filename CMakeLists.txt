@@ -9,7 +9,19 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 add_library(ring_buffer INTERFACE)
+add_library(ring_buffer_mutex INTERFACE)
+add_library(ring_buffer_atomic INTERFACE)
 target_include_directories(ring_buffer
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(ring_buffer_atomic
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+target_include_directories(ring_buffer_mutex
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
@@ -35,8 +47,14 @@ if(ENABLE_TESTS)
     enable_testing()
     
     add_executable(ring_buffer_test tests/ring_buffer_test.cc)
+    add_executable(ring_buffer_atomic_test tests/ring_buffer_atomic_test.cc)
+    add_executable(ring_buffer_mutex_test tests/ring_buffer_mutex_test.cc)
     target_link_libraries(ring_buffer_test PRIVATE ring_buffer GTest::gtest_main)
+    target_link_libraries(ring_buffer_atomic_test PRIVATE ring_buffer_atomic GTest::gtest_main)
+    target_link_libraries(ring_buffer_mutex_test PRIVATE ring_buffer_mutex GTest::gtest_main)
     add_test(NAME ring_buffer_test COMMAND ring_buffer_test)
+    add_test(NAME ring_buffer_atomic_test COMMAND ring_buffer_atomic_test)
+    add_test(NAME ring_buffer_mutex_test COMMAND ring_buffer_mutex_test)
 endif(ENABLE_TESTS)
 
 include(GNUInstallDirs)
