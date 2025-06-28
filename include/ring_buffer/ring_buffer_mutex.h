@@ -7,33 +7,24 @@
 #include <span>
 #include <stdexcept>
 
+#include "common.h"
+
 namespace RingBuffer {  // interface
 
-#ifndef __cpp_lib_hardware_interference_size
-constexpr std::size_t CACHELINE_SIZE = 64;
-#else
-constexpr std::size_t CACHELINE_SIZE =
-    std::hardware_destructive_interference_size;
-#endif
-
 template <typename T>
-class alignas(CACHELINE_SIZE) RingBufferMutex {
+class alignas(Common::CACHELINE_SIZE) RingBufferMutex {
  private:
-  struct Deleter {
-    std::size_t alignment;
-    void operator()(T* ptr) const noexcept;
-  };
-
-  std::unique_ptr<T[], Deleter> buffer;
+  std::unique_ptr<T[], Common::AlignedDeleter> buffer;
   const size_t capacity;
   const std::size_t alignment;
 
-  alignas(CACHELINE_SIZE) mutable std::mutex mtx;
-  alignas(CACHELINE_SIZE) size_t head = 0;
-  alignas(CACHELINE_SIZE) size_t tail = 0;
+  alignas(Common::CACHELINE_SIZE) mutable std::mutex mtx;
+  alignas(Common::CACHELINE_SIZE) size_t head = 0;
+  alignas(Common::CACHELINE_SIZE) size_t tail = 0;
 
  public:
-  explicit RingBufferMutex(size_t cap, std::size_t align = CACHELINE_SIZE);
+  explicit RingBufferMutex(size_t cap,
+                           std::size_t align = Common::CACHELINE_SIZE);
 
   void push(const T& value);
   void push(T&& value);
@@ -51,13 +42,10 @@ class alignas(CACHELINE_SIZE) RingBufferMutex {
 namespace RingBuffer {  // implementation
 
 template <typename T>
-void RingBufferMutex<T>::Deleter::operator()(T* ptr) const noexcept {
-  ::operator delete[](ptr, std::align_val_t(alignment));
-}
-
-template <typename T>
 RingBufferMutex<T>::RingBufferMutex(size_t cap, std::size_t align)
-    : capacity(cap + 1), alignment(align), buffer(nullptr, Deleter{align}) {
+    : capacity(cap + 1),
+      alignment(align),
+      buffer(nullptr, Common::AlignedDeleter{align}) {
   if (cap == 0)
     throw std::invalid_argument(
         "capacity of ring buffer must be greater than 0");

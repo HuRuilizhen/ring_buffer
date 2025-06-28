@@ -6,32 +6,22 @@
 #include <memory>
 #include <stdexcept>
 
+#include "common.h"
+
 namespace RingBuffer {  // interface
 
-#ifndef __cpp_lib_hardware_interference_size
-constexpr std::size_t CACHELINE_SIZE = 64;
-#else
-constexpr std::size_t CACHELINE_SIZE =
-    std::hardware_destructive_interference_size;
-#endif
-
 template <typename T>
-class alignas(CACHELINE_SIZE) RingBufferAtomic {
- private:
-  struct Deleter {
-    std::size_t alignment;
-    void operator()(T* ptr) const noexcept;
-  };
-
-  std::unique_ptr<T[], Deleter> buffer;
+class alignas(Common::CACHELINE_SIZE) RingBufferAtomic {
+  std::unique_ptr<T[], Common::AlignedDeleter> buffer;
   const size_t capacity;
   const std::size_t alignment;
 
-  alignas(CACHELINE_SIZE) std::atomic<size_t> head = 0;
-  alignas(CACHELINE_SIZE) std::atomic<size_t> tail = 0;
+  alignas(Common::CACHELINE_SIZE) std::atomic<size_t> head = 0;
+  alignas(Common::CACHELINE_SIZE) std::atomic<size_t> tail = 0;
 
  public:
-  explicit RingBufferAtomic<T>(size_t cap, std::size_t align = CACHELINE_SIZE);
+  explicit RingBufferAtomic<T>(size_t cap,
+                               std::size_t align = Common::CACHELINE_SIZE);
 
   void push(const T& value);
   void push(T&& value);
@@ -49,13 +39,10 @@ class alignas(CACHELINE_SIZE) RingBufferAtomic {
 namespace RingBuffer {  // implementation
 
 template <typename T>
-void RingBufferAtomic<T>::Deleter::operator()(T* ptr) const noexcept {
-  ::operator delete[](ptr, std::align_val_t(alignment));
-}
-
-template <typename T>
 RingBufferAtomic<T>::RingBufferAtomic(size_t cap, std::size_t align)
-    : capacity(cap + 1), alignment(align), buffer(nullptr, Deleter{align}) {
+    : capacity(cap + 1),
+      alignment(align),
+      buffer(nullptr, Common::AlignedDeleter{align}) {
   if (cap == 0)
     throw std::invalid_argument(
         "capacity of ring buffer must be greater than 0");
