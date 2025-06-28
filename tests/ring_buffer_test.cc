@@ -1,6 +1,6 @@
-#include "ring_buffer/ring_buffer.h"
-
 #include <gtest/gtest.h>
+
+#include "ring_buffer/internal/fixed.h"
 
 TEST(RingBufferTest, ConstructorInvalid) {
   EXPECT_THROW(RingBuffer::RingBuffer<int> buffer(0), std::invalid_argument);

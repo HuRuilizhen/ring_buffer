@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 
-#include "ring_buffer/ring_buffer_atomic.h"
+#include "ring_buffer/internal/atomic.h"
 
 using namespace std::chrono;
 

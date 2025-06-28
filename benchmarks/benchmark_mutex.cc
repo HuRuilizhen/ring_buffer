@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 
-#include "ring_buffer/ring_buffer_mutex.h"
+#include "ring_buffer/internal/mutex.h"
 
 using namespace std::chrono;
 

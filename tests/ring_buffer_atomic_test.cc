@@ -1,10 +1,10 @@
-#include "ring_buffer/ring_buffer_atomic.h"
-
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <thread>
 #include <vector>
+
+#include "ring_buffer/internal/atomic.h"
 
 TEST(RingBufferAtomicTest, ConstructorInvalid) {
   EXPECT_THROW(RingBuffer::RingBufferAtomic<int> buffer(0),

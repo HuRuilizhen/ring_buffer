@@ -1,5 +1,3 @@
-#include "ring_buffer/ring_buffer_mutex.h"
-
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -7,6 +5,8 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include "ring_buffer/internal/mutex.h"
 
 TEST(RingBufferMutexTest, ConstructorInvalid) {
   EXPECT_THROW(RingBuffer::RingBufferMutex<int> buffer(0),
