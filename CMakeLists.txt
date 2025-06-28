@@ -28,9 +28,11 @@ target_include_directories(ring_buffer_mutex
 )
 
 
-option(ENABLE_BENCHMARKS "Enable benchmarks" ON)
+option(ENABLE_BENCHMARKS "Enable benchmarks" OFF)
 
 if(ENABLE_BENCHMARKS)
+    message(STATUS, "Benchmakes enabled")
+
     add_executable(ring_buffer_benchmark
         benchmarks/benchmark_main.cc
         benchmarks/benchmark_atomic.cc
@@ -38,7 +40,8 @@ if(ENABLE_BENCHMARKS)
     target_link_libraries(ring_buffer_benchmark PRIVATE ring_buffer_atomic ring_buffer_mutex)
 endif()
 
-option(ENABLE_TESTS "Enable tests" ON)
+
+option(ENABLE_TESTS "Enable tests" OFF)
 
 if(ENABLE_TESTS)
     message(STATUS "Tests enabled")
@@ -94,3 +97,13 @@ install(FILES
 export(EXPORT ring_bufferTargets
   FILE ${CMAKE_CURRENT_BINARY_DIR}/ring_bufferTargets.cmake
   NAMESPACE ring_buffer::)
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Uninstall.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/Uninstall.cmake
+  @ONLY
+)
+
+add_custom_target(uninstall
+  COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/Uninstall.cmake
+)

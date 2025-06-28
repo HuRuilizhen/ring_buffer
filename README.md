@@ -26,11 +26,18 @@ cmake -G "Unix Makefiles" -B build
 Then run the build and optionally install:
 
 ```bash
-cmake -S . -B build
+cmake -S . -B build -DENABLE_TESTS=ON -DENABLE_BENCHMARKS=ON
 cmake --build build
 sudo cmake --install build
 ```
 
+Or build without tests and benchmarks:
+
+```bash
+cmake -S . -B build
+cmake --build build
+sudo cmake --install build
+```
 
 ### Running the Benchmark
 
@@ -57,4 +64,12 @@ After installation you can use `find_package` to locate the
 ```cmake
 find_package(ring_buffer CONFIG REQUIRED)
 target_link_libraries(your_app PRIVATE ring_buffer::ring_buffer)
+```
+
+## Uninstalling the Library
+
+To uninstall the library, run the `uninstall` target:
+
+```bash
+sudo cmake --build build --target uninstall
 ```
