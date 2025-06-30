@@ -26,7 +26,7 @@ cmake -G "Unix Makefiles" -B build
 Then run the build and optionally install:
 
 ```bash
-cmake -S . -B build -DENABLE_TESTS=ON -DENABLE_BENCHMARKS=ON
+cmake -S . -B build -DENABLE_TESTS=ON -DENABLE_BENCHMARKS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build
 sudo cmake --install build
 ```
@@ -34,7 +34,7 @@ sudo cmake --install build
 Or build without tests and benchmarks:
 
 ```bash
-cmake -S . -B build
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build
 sudo cmake --install build
 ```
