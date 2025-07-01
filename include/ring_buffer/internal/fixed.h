@@ -17,9 +17,9 @@ class RingBuffer {
 
  public:
   explicit RingBuffer(size_t cap);
-  void push(const T &value);
-  void push(T &&value);
-  T pop();
+  bool tryPush(const T &value);
+  bool tryPush(T &&value);
+  bool tryPop(T &value);
 
   bool isFull() const;
   bool isEmpty() const;
@@ -41,25 +41,27 @@ RingBuffer<T>::RingBuffer(size_t cap)
 }
 
 template <typename T>
-void RingBuffer<T>::push(const T &value) {
-  if (isFull()) throw std::overflow_error("ring buffer is full");
+bool RingBuffer<T>::tryPush(const T &value) {
+  if (isFull()) return false;
   buffer[tail] = value;
   tail = (tail + 1) % capacity;
+  return true;
 }
 
 template <typename T>
-void RingBuffer<T>::push(T &&value) {
-  if (isFull()) throw std::overflow_error("ring buffer is full");
+bool RingBuffer<T>::tryPush(T &&value) {
+  if (isFull()) return false;
   buffer[tail] = std::move(value);
   tail = (tail + 1) % capacity;
+  return true;
 }
 
 template <typename T>
-T RingBuffer<T>::pop() {
-  if (isEmpty()) throw std::underflow_error("ring buffer is empty");
-  T value = std::move(buffer[head]);
+bool RingBuffer<T>::tryPop(T &value) {
+  if (isEmpty()) return false;
+  value = std::move(buffer[head]);
   head = (head + 1) % capacity;
-  return value;
+  return true;
 }
 
 template <typename T>

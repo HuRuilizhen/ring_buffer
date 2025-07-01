@@ -14,81 +14,76 @@ TEST(RingBufferMutexTest, ConstructorInvalid) {
 }
 
 TEST(RingBufferMutexTest, PushPopBasic) {
+  int value;
   RingBuffer::RingBufferMutex<int> buffer(3);
   EXPECT_TRUE(buffer.isEmpty());
-  EXPECT_FALSE(buffer.isFull());
   EXPECT_EQ(buffer.getCapacity(), 3u);
-  EXPECT_EQ(buffer.getSize(), 0u);
 
-  buffer.push(1);
-  buffer.push(2);
-  EXPECT_EQ(buffer.getSize(), 2u);
-  EXPECT_FALSE(buffer.isFull());
+  buffer.tryPush(1);
+  buffer.tryPush(2);
+  buffer.tryPush(3);
+  EXPECT_FALSE(buffer.tryPush(-1));
+
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 1);
+
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 2);
+
   EXPECT_FALSE(buffer.isEmpty());
-
-  buffer.push(3);
-  EXPECT_TRUE(buffer.isFull());
-  EXPECT_EQ(buffer.getSize(), 3u);
-  EXPECT_THROW(buffer.push(4), std::overflow_error);
-
-  EXPECT_EQ(buffer.pop(), 1);
-  EXPECT_EQ(buffer.pop(), 2);
-  EXPECT_FALSE(buffer.isFull());
-  EXPECT_FALSE(buffer.isEmpty());
-  EXPECT_EQ(buffer.pop(), 3);
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 3);
   EXPECT_TRUE(buffer.isEmpty());
-  EXPECT_THROW(buffer.pop(), std::underflow_error);
+  EXPECT_FALSE(buffer.tryPop(value));
 }
 
 TEST(RingBufferMutexTest, WrapAround) {
+  int value;
   RingBuffer::RingBufferMutex<int> buffer(3);
-  buffer.push(1);
-  buffer.push(2);
-  buffer.push(3);
-  EXPECT_TRUE(buffer.isFull());
 
-  EXPECT_EQ(buffer.pop(), 1);
-  EXPECT_EQ(buffer.pop(), 2);
-  EXPECT_FALSE(buffer.isFull());
+  buffer.tryPush(1);
+  buffer.tryPush(2);
+  buffer.tryPush(3);
+  EXPECT_FALSE(buffer.tryPush(-1));
 
-  buffer.push(4);
-  buffer.push(5);
-  EXPECT_TRUE(buffer.isFull());
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 1);
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 2);
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 3);
 
-  EXPECT_EQ(buffer.pop(), 3);
-  EXPECT_EQ(buffer.pop(), 4);
-  EXPECT_EQ(buffer.pop(), 5);
+  EXPECT_TRUE(buffer.tryPush(4));
+  EXPECT_TRUE(buffer.tryPush(5));
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 4);
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 5);
+  EXPECT_FALSE(buffer.tryPop(value));
 }
 
 TEST(RingBufferMutexTest, SPSC) {
-  constexpr int iterations = 10000;
-  RingBuffer::RingBufferMutex<int> buffer(128);
+  constexpr int ITERATIONS = 10000;
+  constexpr int CAPACITY = 128;
+  RingBuffer::RingBufferMutex<int> buffer(CAPACITY);
 
   std::thread producer([&]() {
-    for (int i = 0; i < iterations; ++i) {
+    for (int i = 0; i < ITERATIONS; ++i) {
       while (true) {
-        try {
-          buffer.push(i);
-          break;
-        } catch (const std::overflow_error&) {
-          std::this_thread::yield();
-        }
+        if (buffer.tryPush(i)) break;
+        std::this_thread::yield();
       }
     }
   });
 
   std::vector<int> results;
-  results.reserve(iterations);
+  results.reserve(ITERATIONS);
   std::thread consumer([&]() {
-    for (int i = 0; i < iterations; ++i) {
-      int value;
+    int value;
+    for (int i = 0; i < ITERATIONS; ++i) {
       while (true) {
-        try {
-          value = buffer.pop();
-          break;
-        } catch (const std::underflow_error&) {
-          std::this_thread::yield();
-        }
+        if (buffer.tryPop(value)) break;
+        std::this_thread::yield();
       }
       results.push_back(value);
     }
@@ -97,58 +92,56 @@ TEST(RingBufferMutexTest, SPSC) {
   producer.join();
   consumer.join();
 
-  for (int i = 0; i < iterations; ++i) {
+  for (int i = 0; i < ITERATIONS; ++i) {
     EXPECT_EQ(results[i], i);
   }
   EXPECT_TRUE(buffer.isEmpty());
 }
 
 TEST(RingBufferMutexTest, MPMC) {
-  constexpr int producers = 4;
-  constexpr int items_per_producer = 250;
-  constexpr int total_items = producers * items_per_producer;
+  constexpr int PRODUCERS = 4;
+  constexpr int ITEMS_PER_PRODUCER = 250;
+  constexpr int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
+  constexpr int CAPACITY = 128;
 
-  RingBuffer::RingBufferMutex<int> buffer(128);
+  RingBuffer::RingBufferMutex<int> buffer(CAPACITY);
   std::atomic<int> produced{0};
   std::atomic<int> consumed{0};
   std::vector<std::thread> producer_threads;
-  for (int p = 0; p < producers; ++p) {
+  for (int p = 0; p < PRODUCERS; ++p) {
     producer_threads.emplace_back([p, &buffer, &produced]() {
-      for (int i = 0; i < items_per_producer; ++i) {
-        int value = p * items_per_producer + i;
+      for (int i = 0; i < ITEMS_PER_PRODUCER; ++i) {
+        int value = p * ITEMS_PER_PRODUCER + i;
         while (true) {
-          try {
-            buffer.push(value);
+          if (buffer.tryPush(value)) {
             produced.fetch_add(1, std::memory_order_relaxed);
             break;
-          } catch (const std::overflow_error&) {
+          } else
             std::this_thread::yield();
-          }
         }
       }
     });
   }
 
   std::vector<int> results;
-  results.reserve(total_items);
+  results.reserve(TOTAL_ITEMS);
   std::mutex results_mtx;
   std::vector<std::thread> consumer_threads;
-  for (int c = 0; c < producers; ++c) {
+  for (int c = 0; c < PRODUCERS; ++c) {
     consumer_threads.emplace_back([&]() {
       while (true) {
         int value;
-        try {
-          value = buffer.pop();
+        if (buffer.tryPop(value)) {
           {
             std::lock_guard<std::mutex> lock(results_mtx);
             results.push_back(value);
           }
           if (consumed.fetch_add(1, std::memory_order_relaxed) + 1 >=
-              total_items)
+              TOTAL_ITEMS)
             break;
-        } catch (const std::underflow_error&) {
-          if (produced.load(std::memory_order_acquire) >= total_items) {
-            if (consumed.load(std::memory_order_relaxed) >= total_items) break;
+        } else {
+          if (produced.load(std::memory_order_acquire) >= TOTAL_ITEMS) {
+            if (consumed.load(std::memory_order_relaxed) >= TOTAL_ITEMS) break;
           }
           std::this_thread::yield();
         }
@@ -159,9 +152,9 @@ TEST(RingBufferMutexTest, MPMC) {
   for (auto& t : producer_threads) t.join();
   for (auto& t : consumer_threads) t.join();
 
-  EXPECT_EQ(results.size(), static_cast<size_t>(total_items));
+  EXPECT_EQ(results.size(), static_cast<size_t>(TOTAL_ITEMS));
   std::sort(results.begin(), results.end());
-  for (int i = 0; i < total_items; ++i) {
+  for (int i = 0; i < TOTAL_ITEMS; ++i) {
     EXPECT_EQ(results[i], i);
   }
   EXPECT_TRUE(buffer.isEmpty());

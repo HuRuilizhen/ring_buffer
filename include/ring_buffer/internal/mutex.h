@@ -4,7 +4,6 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <span>
 #include <stdexcept>
 
 #include "common.h"
@@ -16,7 +15,6 @@ class alignas(Common::CACHELINE_SIZE) RingBufferMutex {
  private:
   std::unique_ptr<T[], Common::AlignedDeleter> buffer;
   const size_t capacity;
-  const std::size_t alignment;
 
   alignas(Common::CACHELINE_SIZE) mutable std::mutex mtx;
   alignas(Common::CACHELINE_SIZE) size_t head = 0;
@@ -26,9 +24,9 @@ class alignas(Common::CACHELINE_SIZE) RingBufferMutex {
   explicit RingBufferMutex(size_t cap,
                            std::size_t align = Common::CACHELINE_SIZE);
 
-  void push(const T& value);
-  void push(T&& value);
-  T pop();
+  bool tryPush(const T& value);
+  bool tryPush(T&& value);
+  bool tryPop(T& value);
 
   bool isFull() const;
   bool isEmpty() const;
@@ -43,9 +41,7 @@ namespace RingBuffer {  // implementation
 
 template <typename T>
 RingBufferMutex<T>::RingBufferMutex(size_t cap, std::size_t align)
-    : capacity(cap + 1),
-      alignment(align),
-      buffer(nullptr, Common::AlignedDeleter{align}) {
+    : capacity(cap + 1), buffer(nullptr, Common::AlignedDeleter{align}) {
   if (cap == 0)
     throw std::invalid_argument(
         "capacity of ring buffer must be greater than 0");
@@ -56,28 +52,30 @@ RingBufferMutex<T>::RingBufferMutex(size_t cap, std::size_t align)
 }
 
 template <typename T>
-void RingBufferMutex<T>::push(const T& value) {
+bool RingBufferMutex<T>::tryPush(const T& value) {
   std::lock_guard<std::mutex> lock(mtx);
-  if (isFull()) throw std::overflow_error("ring buffer is full");
+  if (isFull()) return false;
   buffer[tail] = value;
   tail = (tail + 1) % capacity;
+  return true;
 }
 
 template <typename T>
-void RingBufferMutex<T>::push(T&& value) {
+bool RingBufferMutex<T>::tryPush(T&& value) {
   std::lock_guard<std::mutex> lock(mtx);
-  if (isFull()) throw std::overflow_error("ring buffer is full");
+  if (isFull()) return false;
   buffer[tail] = std::move(value);
   tail = (tail + 1) % capacity;
+  return true;
 }
 
 template <typename T>
-T RingBufferMutex<T>::pop() {
+bool RingBufferMutex<T>::tryPop(T& value) {
   std::lock_guard<std::mutex> lock(mtx);
-  if (isEmpty()) throw std::underflow_error("ring buffer is empty");
-  T value = std::move(buffer[head]);
+  if (isEmpty()) return false;
+  value = std::move(buffer[head]);
   head = (head + 1) % capacity;
-  return value;
+  return true;
 }
 
 template <typename T>

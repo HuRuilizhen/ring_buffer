@@ -14,7 +14,6 @@ template <typename T>
 class alignas(Common::CACHELINE_SIZE) RingBufferAtomic {
   std::unique_ptr<T[], Common::AlignedDeleter> buffer;
   const size_t capacity;
-  const std::size_t alignment;
 
   alignas(Common::CACHELINE_SIZE) std::atomic<size_t> head = 0;
   alignas(Common::CACHELINE_SIZE) std::atomic<size_t> tail = 0;
@@ -23,9 +22,9 @@ class alignas(Common::CACHELINE_SIZE) RingBufferAtomic {
   explicit RingBufferAtomic<T>(size_t cap,
                                std::size_t align = Common::CACHELINE_SIZE);
 
-  void push(const T& value);
-  void push(T&& value);
-  T pop();
+  bool tryPush(const T& value);
+  bool tryPush(T&& value);
+  bool tryPop(T& value);
 
   bool isFull() const;
   bool isEmpty() const;
@@ -40,9 +39,7 @@ namespace RingBuffer {  // implementation
 
 template <typename T>
 RingBufferAtomic<T>::RingBufferAtomic(size_t cap, std::size_t align)
-    : capacity(cap + 1),
-      alignment(align),
-      buffer(nullptr, Common::AlignedDeleter{align}) {
+    : capacity(cap + 1), buffer(nullptr, Common::AlignedDeleter{align}) {
   if (cap == 0)
     throw std::invalid_argument(
         "capacity of ring buffer must be greater than 0");
@@ -53,39 +50,38 @@ RingBufferAtomic<T>::RingBufferAtomic(size_t cap, std::size_t align)
 }
 
 template <typename T>
-void RingBufferAtomic<T>::push(const T& value) {
+bool RingBufferAtomic<T>::tryPush(const T& value) {
   const size_t current_tail = tail.load(std::memory_order_relaxed);
   const size_t next_tail = (current_tail + 1) % capacity;
 
-  if (next_tail == head.load(std::memory_order_acquire))
-    throw std::overflow_error("ring buffer is full");
+  if (next_tail == head.load(std::memory_order_acquire)) return false;
 
   buffer[current_tail] = value;
   tail.store(next_tail, std::memory_order_release);
+  return true;
 }
 
 template <typename T>
-void RingBufferAtomic<T>::push(T&& value) {
+bool RingBufferAtomic<T>::tryPush(T&& value) {
   const size_t current_tail = tail.load(std::memory_order_relaxed);
   const size_t next_tail = (current_tail + 1) % capacity;
 
-  if (next_tail == head.load(std::memory_order_acquire))
-    throw std::overflow_error("ring buffer is full");
+  if (next_tail == head.load(std::memory_order_acquire)) return false;
 
   buffer[current_tail] = std::move(value);
   tail.store(next_tail, std::memory_order_release);
+  return true;
 }
 
 template <typename T>
-T RingBufferAtomic<T>::pop() {
+bool RingBufferAtomic<T>::tryPop(T& value) {
   const size_t current_head = head.load(std::memory_order_relaxed);
 
-  if (current_head == tail.load(std::memory_order_acquire))
-    throw std::underflow_error("ring buffer is empty");
+  if (current_head == tail.load(std::memory_order_acquire)) return false;
 
-  T value = std::move(buffer[current_head]);
+  value = std::move(buffer[current_head]);
   head.store((current_head + 1) % capacity, std::memory_order_release);
-  return value;
+  return true;
 }
 
 template <typename T>

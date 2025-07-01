@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 
-#include "ring_buffer/internal/mutex.h"
+#include "ring_buffer/spsc.h"
 
 using namespace std::chrono;
 
@@ -16,25 +16,18 @@ void benchmark_mutex() {
   std::thread producer([&]() {
     for (int i = 0; i < ITERATIONS; ++i) {
       while (true) {
-        try {
-          buffer.push(i);
-          break;
-        } catch (const std::overflow_error &) {
-          std::this_thread::yield();
-        }
+        if (buffer.tryPush(i)) break;
+        std::this_thread::yield();
       }
     }
   });
 
   std::thread consumer([&]() {
+    int value;
     for (int i = 0; i < ITERATIONS; ++i) {
       while (true) {
-        try {
-          buffer.pop();
-          break;
-        } catch (const std::underflow_error &) {
-          std::this_thread::yield();
-        }
+        if (buffer.tryPop(value)) break;
+        std::this_thread::yield();
       }
     }
   });

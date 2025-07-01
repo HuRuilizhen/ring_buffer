@@ -1,9 +1,8 @@
-
 #include <chrono>
 #include <iostream>
 #include <thread>
 
-#include "ring_buffer/internal/semiatomic_slot.h"
+#include "ring_buffer/spsc.h"
 
 using namespace std::chrono;
 
@@ -24,10 +23,10 @@ void benchmark_semiatomic_slot() {
   });
 
   std::thread consumer([&]() {
+    int value;
     for (int i = 0; i < ITERATIONS; ++i) {
       while (true) {
-        int temp;
-        if (buffer.tryPop(temp)) break;
+        if (buffer.tryPop(value)) break;
         std::this_thread::yield();
       }
     }
