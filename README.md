@@ -89,7 +89,7 @@ target_link_libraries(your_app PRIVATE ring_buffer::ring_buffer)
 ## Uninstall
 
 ```bash
-sudo cmake --build build --target uninstall
+sudo cmake --build build --target uninstall_ring_buffer
 ```
 
 ## Contributing
