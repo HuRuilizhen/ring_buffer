@@ -1,5 +1,7 @@
 # ring_buffer
 
+![Build Status](https://img.shields.io/github/actions/workflow/status/HuRuilizhen/ring_buffer/cmake-multi-platform.yml?branch=release)
+
 A header-only C++20 ring buffer library providing several synchronization strategies. Unit tests and microbenchmarks are included.
 
 ## Features
@@ -16,13 +18,18 @@ A header-only C++20 ring buffer library providing several synchronization strate
 
 ## Table of Contents
 
-- [Building](#building)
-- [Benchmarks](#benchmarks)
-- [Running Tests](#running-tests)
-- [Using the Library](#using-the-library)
-- [Uninstall](#uninstall)
-- [Contributing](#contributing)
-- [License](#license)
+- [ring\_buffer](#ring_buffer)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Table of Contents](#table-of-contents)
+  - [Building](#building)
+  - [Benchmarks](#benchmarks)
+  - [Running Tests](#running-tests)
+  - [Using the Library](#using-the-library)
+    - [Using FetchContent](#using-fetchcontent)
+  - [Uninstall](#uninstall)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Building
 
@@ -80,10 +87,10 @@ include(FetchContent)
 FetchContent_Declare(
   ring_buffer
   GIT_REPOSITORY https://github.com/HuRuilizhen/ring_buffer
-  GIT_TAG        v1.0.0 # stable release on the release branch
+  GIT_TAG        v1.0.1 # stable release on the release branch
 )
 FetchContent_MakeAvailable(ring_buffer)
-target_link_libraries(your_app PRIVATE ring_buffer::ring_buffer)
+target_link_libraries(your_app PRIVATE ring_buffer)
 ```
 
 ## Uninstall
