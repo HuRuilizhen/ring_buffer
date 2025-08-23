@@ -1,10 +1,10 @@
-void benchmark_atomic();
-void benchmark_mutex();
-void benchmark_semiatomic_slot();
+void benchmark_spsc();
+void benchmark_mpsc();
+void benchmark_mpmc();
 
 int main() {
-  benchmark_atomic();
-  benchmark_mutex();
-  benchmark_semiatomic_slot();
+  benchmark_spsc();
+  benchmark_mpsc();
+  benchmark_mpmc();
   return 0;
 }
