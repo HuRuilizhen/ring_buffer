@@ -2,15 +2,15 @@
 #include <iostream>
 #include <thread>
 
-#include "ring_buffer/spsc.h"
+#include "ring_buffer/mpmc_ring_buffer.h"
 
 using namespace std::chrono;
 
 constexpr int ITERATIONS = 1000000;
 constexpr int CAPACITY = 1024;
 
-void benchmark_atomic() {
-  RingBuffer::RingBufferAtomic<int> buffer(CAPACITY);
+void benchmark_mpmc() {
+  RingBuffer::MPMCRingBuffer<int> buffer(CAPACITY);
   auto start = high_resolution_clock::now();
 
   std::thread producer([&]() {
@@ -37,6 +37,6 @@ void benchmark_atomic() {
 
   auto end = high_resolution_clock::now();
   std::chrono::duration<double> dur = end - start;
-  std::cout << "RingBufferAtomic SPSC time: " << dur.count() << " s"
+  std::cout << "MPMC RingBuffer SPSC time: " << dur.count() << " s"
             << std::endl;
 }

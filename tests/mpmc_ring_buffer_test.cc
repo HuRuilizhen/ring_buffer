@@ -1,3 +1,5 @@
+#include "ring_buffer/mpmc_ring_buffer.h"
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -6,18 +8,14 @@
 #include <thread>
 #include <vector>
 
-#include "ring_buffer/internal/mutex.h"
-
 TEST(RingBufferMutexTest, ConstructorInvalid) {
-  EXPECT_THROW(RingBuffer::RingBufferMutex<int> buffer(0),
+  EXPECT_THROW(RingBuffer::MPMCRingBuffer<int> buffer(0),
                std::invalid_argument);
 }
 
 TEST(RingBufferMutexTest, PushPopBasic) {
   int value;
-  RingBuffer::RingBufferMutex<int> buffer(3);
-  EXPECT_TRUE(buffer.isEmpty());
-  EXPECT_EQ(buffer.getCapacity(), 3u);
+  RingBuffer::MPMCRingBuffer<int> buffer(3);
 
   buffer.tryPush(1);
   buffer.tryPush(2);
@@ -30,16 +28,14 @@ TEST(RingBufferMutexTest, PushPopBasic) {
   EXPECT_TRUE(buffer.tryPop(value));
   EXPECT_EQ(value, 2);
 
-  EXPECT_FALSE(buffer.isEmpty());
   EXPECT_TRUE(buffer.tryPop(value));
   EXPECT_EQ(value, 3);
-  EXPECT_TRUE(buffer.isEmpty());
   EXPECT_FALSE(buffer.tryPop(value));
 }
 
 TEST(RingBufferMutexTest, WrapAround) {
   int value;
-  RingBuffer::RingBufferMutex<int> buffer(3);
+  RingBuffer::MPMCRingBuffer<int> buffer(3);
 
   buffer.tryPush(1);
   buffer.tryPush(2);
@@ -65,7 +61,7 @@ TEST(RingBufferMutexTest, WrapAround) {
 TEST(RingBufferMutexTest, SPSC) {
   constexpr int ITERATIONS = 10000;
   constexpr int CAPACITY = 128;
-  RingBuffer::RingBufferMutex<int> buffer(CAPACITY);
+  RingBuffer::MPMCRingBuffer<int> buffer(CAPACITY);
 
   std::thread producer([&]() {
     for (int i = 0; i < ITERATIONS; ++i) {
@@ -95,7 +91,6 @@ TEST(RingBufferMutexTest, SPSC) {
   for (int i = 0; i < ITERATIONS; ++i) {
     EXPECT_EQ(results[i], i);
   }
-  EXPECT_TRUE(buffer.isEmpty());
 }
 
 TEST(RingBufferMutexTest, MPMC) {
@@ -104,7 +99,7 @@ TEST(RingBufferMutexTest, MPMC) {
   constexpr int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
   constexpr int CAPACITY = 128;
 
-  RingBuffer::RingBufferMutex<int> buffer(CAPACITY);
+  RingBuffer::MPMCRingBuffer<int> buffer(CAPACITY);
   std::atomic<int> produced{0};
   std::atomic<int> consumed{0};
   std::vector<std::thread> producer_threads;
@@ -157,10 +152,4 @@ TEST(RingBufferMutexTest, MPMC) {
   for (int i = 0; i < TOTAL_ITEMS; ++i) {
     EXPECT_EQ(results[i], i);
   }
-  EXPECT_TRUE(buffer.isEmpty());
-}
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

@@ -5,12 +5,12 @@
 #include <memory>
 #include <stdexcept>
 
-#include "common.h"
+#include "internal/common.h"
 
 namespace RingBuffer {  // interface
 
 template <typename T>
-class alignas(Common::CACHELINE_SIZE) RingBufferSemiAtomicSlot {
+class alignas(Common::CACHELINE_SIZE) MPSCRingBuffer {
  private:
   struct Slot {
     alignas(Common::CACHELINE_SIZE) std::atomic<size_t> seq;
@@ -25,15 +25,12 @@ class alignas(Common::CACHELINE_SIZE) RingBufferSemiAtomicSlot {
   alignas(Common::CACHELINE_SIZE) size_t head = 0;
 
  public:
-  explicit RingBufferSemiAtomicSlot(size_t cap,
-                                    std::size_t align = Common::CACHELINE_SIZE);
+  explicit MPSCRingBuffer(size_t cap,
+                          std::size_t align = Common::CACHELINE_SIZE);
 
   bool tryPush(const T& item);
   bool tryPush(T&& item);
   bool tryPop(T& out);
-
-  size_t getCapacity() const;
-  bool isEmpty() const;
 };
 
 }  // namespace RingBuffer
@@ -41,8 +38,7 @@ class alignas(Common::CACHELINE_SIZE) RingBufferSemiAtomicSlot {
 namespace RingBuffer {  // implementation
 
 template <typename T>
-RingBufferSemiAtomicSlot<T>::RingBufferSemiAtomicSlot(size_t cap,
-                                                      std::size_t align)
+MPSCRingBuffer<T>::MPSCRingBuffer(size_t cap, std::size_t align)
     : capacity(cap),
       alignment(align),
       buffer(nullptr, Common::AlignedDeleter{align}) {
@@ -57,7 +53,7 @@ RingBufferSemiAtomicSlot<T>::RingBufferSemiAtomicSlot(size_t cap,
 }
 
 template <typename T>
-bool RingBufferSemiAtomicSlot<T>::tryPush(const T& item) {
+bool MPSCRingBuffer<T>::tryPush(const T& item) {
   size_t pos = tail.load(std::memory_order_relaxed);
 
   while (true) {
@@ -77,7 +73,7 @@ bool RingBufferSemiAtomicSlot<T>::tryPush(const T& item) {
 }
 
 template <typename T>
-bool RingBufferSemiAtomicSlot<T>::tryPush(T&& item) {
+bool MPSCRingBuffer<T>::tryPush(T&& item) {
   size_t pos = tail.load(std::memory_order_relaxed);
 
   while (true) {
@@ -97,7 +93,7 @@ bool RingBufferSemiAtomicSlot<T>::tryPush(T&& item) {
 }
 
 template <typename T>
-bool RingBufferSemiAtomicSlot<T>::tryPop(T& out) {
+bool MPSCRingBuffer<T>::tryPop(T& out) {
   Slot& slot = buffer[head % capacity];
   size_t expected = head + 1;
 
@@ -107,17 +103,6 @@ bool RingBufferSemiAtomicSlot<T>::tryPop(T& out) {
   slot.seq.store(head + capacity, std::memory_order_release);
   ++head;
   return true;
-}
-
-template <typename T>
-size_t RingBufferSemiAtomicSlot<T>::getCapacity() const {
-  return capacity;
-}
-
-template <typename T>
-bool RingBufferSemiAtomicSlot<T>::isEmpty() const {
-  Slot& slot = buffer[head % capacity];
-  return slot.seq.load(std::memory_order_acquire) != head + 1;
 }
 
 }  // namespace RingBuffer
