@@ -2,15 +2,15 @@
 #include <iostream>
 #include <thread>
 
-#include "ring_buffer/mpsc_ring_buffer.h"
+#include "ring_buffer/spsc.h"
 
 using namespace std::chrono;
 
 constexpr int ITERATIONS = 1000000;
 constexpr int CAPACITY = 1024;
 
-void benchmark_mpsc() {
-  RingBuffer::MPSCRingBuffer<int> buffer(CAPACITY);
+void benchmark_mutex() {
+  RingBuffer::RingBufferMutex<int> buffer(CAPACITY);
   auto start = high_resolution_clock::now();
 
   std::thread producer([&]() {
@@ -37,6 +37,6 @@ void benchmark_mpsc() {
 
   auto end = high_resolution_clock::now();
   std::chrono::duration<double> dur = end - start;
-  std::cout << "MPSC RingBuffer SPSC time: " << dur.count() << " s"
+  std::cout << "RingBufferMutex SPSC time: " << dur.count() << " s"
             << std::endl;
 }

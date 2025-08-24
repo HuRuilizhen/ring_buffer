@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(
   ring_buffer
-  VERSION 1.0.3
+  VERSION 1.0.1
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -23,8 +23,8 @@ if(ENABLE_BENCHMARKS)
 
   add_executable(
     ring_buffer_benchmark
-    benchmarks/benchmark_main.cc benchmarks/benchmark_spsc.cc
-    benchmarks/benchmark_mpsc.cc benchmarks/benchmark_mpmc.cc)
+    benchmarks/benchmark_main.cc benchmarks/benchmark_atomic.cc
+    benchmarks/benchmark_mutex.cc benchmarks/benchmark_semiatomic_slot.cc)
   target_link_libraries(ring_buffer_benchmark PRIVATE ring_buffer)
 endif()
 
@@ -45,42 +45,23 @@ if(ENABLE_TESTS)
   FetchContent_MakeAvailable(googletest)
   enable_testing()
 
-  add_executable(basic_ring_buffer_test tests/basic_ring_buffer_test.cc)
-  add_executable(spsc_ring_buffer_test tests/spsc_ring_buffer_test.cc)
-  add_executable(mpsc_ring_buffer_test tests/mpsc_ring_buffer_test.cc)
-  add_executable(mpmc_ring_buffer_test tests/mpmc_ring_buffer_test.cc)
-  target_link_libraries(basic_ring_buffer_test PRIVATE ring_buffer
+  add_executable(ring_buffer_test tests/ring_buffer_test.cc)
+  add_executable(ring_buffer_atomic_test tests/ring_buffer_atomic_test.cc)
+  add_executable(ring_buffer_mutex_test tests/ring_buffer_mutex_test.cc)
+  add_executable(ring_buffer_semiatomic_slot_test
+                 tests/ring_buffer_semiatomic_slot_test.cc)
+  target_link_libraries(ring_buffer_test PRIVATE ring_buffer GTest::gtest_main)
+  target_link_libraries(ring_buffer_atomic_test PRIVATE ring_buffer
+                                                        GTest::gtest_main)
+  target_link_libraries(ring_buffer_mutex_test PRIVATE ring_buffer
                                                        GTest::gtest_main)
-  target_link_libraries(spsc_ring_buffer_test PRIVATE ring_buffer
-                                                      GTest::gtest_main)
-  target_link_libraries(mpsc_ring_buffer_test PRIVATE ring_buffer
-                                                      GTest::gtest_main)
-  target_link_libraries(mpmc_ring_buffer_test PRIVATE ring_buffer
-                                                      GTest::gtest_main)
-
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL
-                                              "GNU")
-
-    if(APPLE)
-      set(SANITIZER_FLAGS "-fsanitize=address,undefined")
-    else()
-      set(SANITIZER_FLAGS "-fsanitize=address,undefined,leak")
-    endif()
-
-    target_compile_options(basic_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-    target_compile_options(spsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-    target_compile_options(mpsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-    target_compile_options(mpmc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(basic_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(spsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(mpsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-    target_link_options(mpmc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
-  endif()
-
-  add_test(NAME basic_ring_buffer_test COMMAND basic_ring_buffer_test)
-  add_test(NAME spsc_ring_buffer_test COMMAND spsc_ring_buffer_test)
-  add_test(NAME mpsc_ring_buffer_test COMMAND mpsc_ring_buffer_test)
-  add_test(NAME mpmc_ring_buffer_test COMMAND mpmc_ring_buffer_test)
+  target_link_libraries(ring_buffer_semiatomic_slot_test
+                        PRIVATE ring_buffer GTest::gtest_main)
+  add_test(NAME ring_buffer_test COMMAND ring_buffer_test)
+  add_test(NAME ring_buffer_atomic_test COMMAND ring_buffer_atomic_test)
+  add_test(NAME ring_buffer_mutex_test COMMAND ring_buffer_mutex_test)
+  add_test(NAME ring_buffer_semiatomic_slot_test
+           COMMAND ring_buffer_semiatomic_slot_test)
 endif(ENABLE_TESTS)
 
 include(GNUInstallDirs)

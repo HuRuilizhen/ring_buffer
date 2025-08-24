@@ -4,9 +4,9 @@ name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ "dev", "release" ]
+    branches: [ "main", "release" ]
   pull_request:
-    branches: [ "dev", "release" ]
+    branches: [ "main", "release" ]
 
 jobs:
   build:
@@ -62,7 +62,6 @@ jobs:
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DENABLE_TESTS=ON 
         -S ${{ github.workspace }}
 
     - name: Build
