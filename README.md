@@ -91,7 +91,7 @@ else()
   FetchContent_Declare(
     ring_buffer
     GIT_REPOSITORY https://github.com/HuRuilizhen/ring_buffer.git
-    GIT_TAG v1.0.2)  # latest stable version
+    GIT_TAG v1.0.3)  # latest stable version
   FetchContent_MakeAvailable(ring_buffer)
 endif()
 
