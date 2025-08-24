@@ -2,6 +2,32 @@
 
 #include <gtest/gtest.h>
 
+namespace {
+
+struct Counter {
+  static inline int constructed = 0;
+  static inline int destructed = 0;
+  static inline int moved = 0;
+  static inline int copied = 0;
+
+  int value;
+
+  Counter(int v = 0) : value(v) { constructed++; }
+  Counter(const Counter& other) : value(other.value) {
+    copied++;
+    constructed++;
+  }
+  Counter(Counter&& other) noexcept : value(other.value) {
+    moved++;
+    constructed++;
+  }
+  ~Counter() { destructed++; }
+
+  static void reset() { constructed = destructed = moved = copied = 0; }
+};
+
+}  // namespace
+
 TEST(BasicRingBufferTest, ConstructorInvalid) {
   EXPECT_THROW(RingBuffer::BasicRingBuffer<int> buffer(0),
                std::invalid_argument);
@@ -78,4 +104,22 @@ TEST(BasicRingBufferTest, EmplaceString) {
   EXPECT_TRUE(buffer.tryPop(value));
   EXPECT_EQ(value, "xxxxx");
   EXPECT_FALSE(buffer.tryPop(value));
+}
+
+TEST(RingBufferTest, CounterLifecycle) {
+  Counter::reset();
+  {
+    RingBuffer::BasicRingBuffer<Counter> buffer(2);
+
+    EXPECT_TRUE(buffer.tryEmplace(1));
+    EXPECT_TRUE(buffer.tryEmplace(2));
+    EXPECT_FALSE(buffer.tryEmplace(3));
+
+    Counter tmp;
+    EXPECT_TRUE(buffer.tryPop(tmp));
+    EXPECT_TRUE(buffer.tryPop(tmp));
+    EXPECT_FALSE(buffer.tryPop(tmp));
+  }
+
+  EXPECT_EQ(Counter::constructed, Counter::destructed);
 }
