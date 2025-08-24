@@ -8,12 +8,38 @@
 #include <thread>
 #include <vector>
 
-TEST(RingBufferMutexTest, ConstructorInvalid) {
+namespace {
+
+struct Counter {
+  static inline int constructed = 0;
+  static inline int destructed = 0;
+  static inline int moved = 0;
+  static inline int copied = 0;
+
+  int value;
+
+  Counter(int v = 0) : value(v) { constructed++; }
+  Counter(const Counter& other) : value(other.value) {
+    copied++;
+    constructed++;
+  }
+  Counter(Counter&& other) noexcept : value(other.value) {
+    moved++;
+    constructed++;
+  }
+  ~Counter() { destructed++; }
+
+  static void reset() { constructed = destructed = moved = copied = 0; }
+};
+
+}  // namespace
+
+TEST(MPMCRingBufferTest, ConstructorInvalid) {
   EXPECT_THROW(RingBuffer::MPMCRingBuffer<int> buffer(0),
                std::invalid_argument);
 }
 
-TEST(RingBufferMutexTest, PushPopBasic) {
+TEST(MPMCRingBufferTest, PushPopBasic) {
   int value;
   RingBuffer::MPMCRingBuffer<int> buffer(3);
 
@@ -33,7 +59,7 @@ TEST(RingBufferMutexTest, PushPopBasic) {
   EXPECT_FALSE(buffer.tryPop(value));
 }
 
-TEST(RingBufferMutexTest, WrapAround) {
+TEST(MPMCRingBufferTest, WrapAround) {
   int value;
   RingBuffer::MPMCRingBuffer<int> buffer(3);
 
@@ -58,7 +84,7 @@ TEST(RingBufferMutexTest, WrapAround) {
   EXPECT_FALSE(buffer.tryPop(value));
 }
 
-TEST(RingBufferMutexTest, SPSC) {
+TEST(MPMCRingBufferTest, SPSC) {
   constexpr int ITERATIONS = 10000;
   constexpr int CAPACITY = 128;
   RingBuffer::MPMCRingBuffer<int> buffer(CAPACITY);
@@ -93,7 +119,7 @@ TEST(RingBufferMutexTest, SPSC) {
   }
 }
 
-TEST(RingBufferMutexTest, MPMC) {
+TEST(MPMCRingBufferTest, MPMC) {
   constexpr int PRODUCERS = 4;
   constexpr int ITEMS_PER_PRODUCER = 250;
   constexpr int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
@@ -152,4 +178,50 @@ TEST(RingBufferMutexTest, MPMC) {
   for (int i = 0; i < TOTAL_ITEMS; ++i) {
     EXPECT_EQ(results[i], i);
   }
+}
+
+TEST(MPMCRingBufferTest, EmplaceBasicType) {
+  int value;
+  RingBuffer::MPMCRingBuffer<int> buffer(2);
+
+  EXPECT_TRUE(buffer.tryEmplace(42));
+  EXPECT_TRUE(buffer.tryEmplace(99));
+  EXPECT_FALSE(buffer.tryEmplace(123));
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 42);
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 99);
+  EXPECT_FALSE(buffer.tryPop(value));
+}
+
+TEST(MPMCRingBufferTest, EmplaceString) {
+  std::string value;
+  RingBuffer::MPMCRingBuffer<std::string> buffer(2);
+
+  EXPECT_TRUE(buffer.tryEmplace("hello"));
+  EXPECT_TRUE(buffer.tryEmplace(5, 'x'));
+  EXPECT_FALSE(buffer.tryEmplace("world"));
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, "hello");
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, "xxxxx");
+  EXPECT_FALSE(buffer.tryPop(value));
+}
+
+TEST(MPMCRingBufferTest, CounterLifecycle) {
+  Counter::reset();
+  {
+    RingBuffer::MPMCRingBuffer<Counter> buffer(2);
+
+    EXPECT_TRUE(buffer.tryEmplace(1));
+    EXPECT_TRUE(buffer.tryEmplace(2));
+    EXPECT_FALSE(buffer.tryEmplace(3));
+
+    Counter tmp;
+    EXPECT_TRUE(buffer.tryPop(tmp));
+    EXPECT_TRUE(buffer.tryPop(tmp));
+    EXPECT_FALSE(buffer.tryPop(tmp));
+  }
+
+  EXPECT_EQ(Counter::constructed, Counter::destructed);
 }

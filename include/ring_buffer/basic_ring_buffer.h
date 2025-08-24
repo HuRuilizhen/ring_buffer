@@ -18,6 +18,8 @@ class BasicRingBuffer {
   explicit BasicRingBuffer(size_t cap);
   bool tryPush(const T &value);
   bool tryPush(T &&value);
+  template <typename... Args>
+  bool tryEmplace(Args &&...args);
   bool tryPop(T &value);
 };
 
@@ -50,9 +52,23 @@ bool BasicRingBuffer<T>::tryPush(T &&value) {
 }
 
 template <typename T>
+template <typename... Args>
+bool BasicRingBuffer<T>::tryEmplace(Args &&...args) {
+  if ((tail + 1) % capacity == head) return false;
+  new (&buffer[tail]) T(std::forward<Args>(args)...);
+  tail = (tail + 1) % capacity;
+  return true;
+}
+
+template <typename T>
 bool BasicRingBuffer<T>::tryPop(T &value) {
   if (head == tail) return false;
-  value = std::move(buffer[head]);
+
+  T *elem = &buffer[head];
+  value.~T();
+  new (&value) T(std::move(*elem));
+  elem->~T();
+
   head = (head + 1) % capacity;
   return true;
 }
