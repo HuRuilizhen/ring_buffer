@@ -6,7 +6,7 @@ A header-only C++20 ring buffer library providing several synchronization strate
 
 ## Features
 
-- Single-producer/single-consumer and multi-producer/multi-consumer variants
+- Basic, SPSC, MPSC and MPMC variants
 - Implementations using mutexes, atomics and semi-atomic slots
 - Simple integration through CMake's `find_package`
 
@@ -23,75 +23,129 @@ A header-only C++20 ring buffer library providing several synchronization strate
   - [Requirements](#requirements)
   - [Table of Contents](#table-of-contents)
   - [Building](#building)
-  - [Benchmarks](#benchmarks)
+    - [Configuration](#configuration)
+    - [Execution](#execution)
+  - [Runing Benchmarks](#runing-benchmarks)
   - [Running Tests](#running-tests)
   - [Using the Library](#using-the-library)
-    - [Using FetchContent](#using-fetchcontent)
+    - [Including the Library](#including-the-library)
+    - [Supported APIs](#supported-apis)
+    - [Quick Example](#quick-example)
+    - [Project Using the Library](#project-using-the-library)
   - [Uninstall](#uninstall)
   - [Contributing](#contributing)
   - [License](#license)
 
 ## Building
 
-Choose your preferred CMake generator:
+### Configuration
+
+| Option                          | Default | Description                               |
+| ------------------------------- | ------- | ----------------------------------------- |
+| `ENABLE_TESTS`                  | OFF     | Build unit tests (requires GTest)         |
+| `ENABLE_BENCHMARKS`             | OFF     | Build microbenchmarks                     |
+| `CMAKE_EXPORT_COMPILE_COMMANDS` | OFF     | Generate `compile_commands.json` for IDEs |
+
+### Execution
 
 ```bash
-cmake -S . -B build -G Ninja    # or Xcode / "Unix Makefiles"
+# Default build
+cmake -S . -B build
 cmake --build build
-```
 
-Enable tests and benchmarks if desired:
-
-```bash
-cmake -S . -B build -DENABLE_TESTS=ON -DENABLE_BENCHMARKS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# Build with tests + benchmarks
+cmake -S . -B build -DENABLE_TESTS=ON -DENABLE_BENCHMARKS=ON
 cmake --build build
+
+# Install
 sudo cmake --install build
 ```
 
-Build without tests and benchmarks for a lean installation:
+## Runing Benchmarks
 
 ```bash
-cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-cmake --build build
-sudo cmake --install build
-```
-
-## Benchmarks
-
-```bash
-./build/bin/ring_buffer_benchmark
+cd ./build/bin && ./ring_buffer_benchmark
 ```
 
 ## Running Tests
 
 ```bash
-cd build
-ctest --output-on-failure
+cd ./build && ctest --output-on-failure
 ```
 
 ## Using the Library
 
-After installation you can import the target in your own project:
+### Including the Library
+
+After installation or fetching you can import the target in your own project:
 
 ```cmake
-find_package(ring_buffer CONFIG REQUIRED)
-target_link_libraries(your_app PRIVATE ring_buffer::ring_buffer)
+find_package(ring_buffer QUIET)
+
+if(ring_buffer_FOUND)
+  message(STATUS "Found local ring_buffer: using ring_buffer::ring_buffer")
+else()
+  message(STATUS "ring_buffer not found locally; fetching via FetchContent")
+
+  include(FetchContent)
+  FetchContent_Declare(
+    ring_buffer
+    GIT_REPOSITORY https://github.com/HuRuilizhen/ring_buffer.git
+    GIT_TAG v1.0.2)  # latest stable version
+  FetchContent_MakeAvailable(ring_buffer)
+endif()
+
+add_library(your_target STATIC src/your_target.cc)
+target_include_directories(
+  your_target PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                      $<INSTALL_INTERFACE:include>)
+target_link_libraries(
+  your_target PUBLIC $<$<BOOL:${ring_buffer_FOUND}>:ring_buffer::ring_buffer>
+                      $<$<NOT:$<BOOL:${ring_buffer_FOUND}>>:ring_buffer>)
 ```
 
-### Using FetchContent
+### Supported APIs
 
-You can also fetch the library automatically without installing it first:
+| Class                | Model | Synchronization           |
+| -------------------- | ----- | ------------------------- |
+| `BasicRingBuffer<T>` | Basic | None (single-thread only) |
+| `SPSCRingBuffer<T>`  | SPSC  | atomics                   |
+| `MPSCRingBuffer<T>`  | MPSC  | atomics + slots           |
+| `MPMCRingBuffer<T>`  | MPMC  | mutex                     |
 
-```cmake
-include(FetchContent)
-FetchContent_Declare(
-  ring_buffer
-  GIT_REPOSITORY https://github.com/HuRuilizhen/ring_buffer
-  GIT_TAG        v1.0.1 # stable release on the release branch
-)
-FetchContent_MakeAvailable(ring_buffer)
-target_link_libraries(your_app PRIVATE ring_buffer)
+**Common API** (all variants):
+
+```cpp
+bool tryPush(const T& value);
+bool tryPush(T&& value);
+template <typename... Args>
+bool tryEmplace(Args&&... args);
+bool tryPop(T& value);
 ```
+
+### Quick Example
+
+```cpp
+#include <ring_buffer/basic_ring_buffer.h>
+#include <iostream>
+
+int main() {
+  RingBuffer::BasicRingBuffer<int> rb(3);
+
+  rb.tryEmplace(1);
+  rb.tryPush(2);
+  rb.tryPush(3);
+
+  int x;
+  while (rb.tryPop(x)) {
+    std::cout << x << std::endl;
+  }
+}
+```
+
+### Project Using the Library
+
+- [async_logger](https://github.com/HuRuilizhen/async_logger): the library for asynchronous logging with mpsc ring buffer support
 
 ## Uninstall
 
@@ -106,4 +160,3 @@ Contributions are welcome! Feel free to open issues or pull requests on GitHub.
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
