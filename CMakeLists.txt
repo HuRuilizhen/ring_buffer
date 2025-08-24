@@ -57,6 +57,26 @@ if(ENABLE_TESTS)
                                                       GTest::gtest_main)
   target_link_libraries(mpmc_ring_buffer_test PRIVATE ring_buffer
                                                       GTest::gtest_main)
+
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL
+                                              "GNU")
+
+    if(APPLE)
+      set(SANITIZER_FLAGS "-fsanitize=address,undefined")
+    else()
+      set(SANITIZER_FLAGS "-fsanitize=address,undefined,leak")
+    endif()
+
+    target_compile_options(basic_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+    target_compile_options(spsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+    target_compile_options(mpsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+    target_compile_options(mpmc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(basic_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(spsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(mpsc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(mpmc_ring_buffer_test PRIVATE ${SANITIZER_FLAGS})
+  endif()
+
   add_test(NAME basic_ring_buffer_test COMMAND basic_ring_buffer_test)
   add_test(NAME spsc_ring_buffer_test COMMAND spsc_ring_buffer_test)
   add_test(NAME mpsc_ring_buffer_test COMMAND mpsc_ring_buffer_test)
