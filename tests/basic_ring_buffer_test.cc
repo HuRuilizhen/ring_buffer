@@ -2,12 +2,12 @@
 
 #include <gtest/gtest.h>
 
-TEST(RingBufferTest, ConstructorInvalid) {
+TEST(BasicRingBufferTest, ConstructorInvalid) {
   EXPECT_THROW(RingBuffer::BasicRingBuffer<int> buffer(0),
                std::invalid_argument);
 }
 
-TEST(RingBufferTest, PushPopBasic) {
+TEST(BasicRingBufferTest, PushPopBasic) {
   int value;
   RingBuffer::BasicRingBuffer<int> buffer(3);
 
@@ -27,7 +27,7 @@ TEST(RingBufferTest, PushPopBasic) {
   EXPECT_FALSE(buffer.tryPop(value));
 }
 
-TEST(RingBufferTest, WrapAround) {
+TEST(BasicRingBufferTest, WrapAround) {
   int value;
   RingBuffer::BasicRingBuffer<int> buffer(3);
 
@@ -49,5 +49,33 @@ TEST(RingBufferTest, WrapAround) {
   EXPECT_EQ(value, 4);
   EXPECT_TRUE(buffer.tryPop(value));
   EXPECT_EQ(value, 5);
+  EXPECT_FALSE(buffer.tryPop(value));
+}
+
+TEST(BasicRingBufferTest, EmplaceBasicType) {
+  int value;
+  RingBuffer::BasicRingBuffer<int> buffer(2);
+
+  EXPECT_TRUE(buffer.tryEmplace(42));
+  EXPECT_TRUE(buffer.tryEmplace(99));
+  EXPECT_FALSE(buffer.tryEmplace(123));
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 42);
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, 99);
+  EXPECT_FALSE(buffer.tryPop(value));
+}
+
+TEST(BasicRingBufferTest, EmplaceString) {
+  std::string value;
+  RingBuffer::BasicRingBuffer<std::string> buffer(2);
+
+  EXPECT_TRUE(buffer.tryEmplace("hello"));
+  EXPECT_TRUE(buffer.tryEmplace(5, 'x'));
+  EXPECT_FALSE(buffer.tryEmplace("world"));
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, "hello");
+  EXPECT_TRUE(buffer.tryPop(value));
+  EXPECT_EQ(value, "xxxxx");
   EXPECT_FALSE(buffer.tryPop(value));
 }
