@@ -20,9 +20,10 @@ class alignas(Common::CACHELINE_SIZE) SPSCRingBuffer {
  public:
   explicit SPSCRingBuffer<T>(size_t cap,
                              std::size_t align = Common::CACHELINE_SIZE);
-
   bool tryPush(const T& value);
   bool tryPush(T&& value);
+  template <typename... Args>
+  bool tryEmplace(Args&&... args);
   bool tryPop(T& value);
 };
 
@@ -67,12 +68,28 @@ bool SPSCRingBuffer<T>::tryPush(T&& value) {
 }
 
 template <typename T>
+template <typename... Args>
+bool SPSCRingBuffer<T>::tryEmplace(Args&&... args) {
+  const size_t current_tail = tail.load(std::memory_order_relaxed);
+  const size_t next_tail = (current_tail + 1) % capacity;
+
+  if (next_tail == head.load(std::memory_order_acquire)) return false;
+
+  new (&buffer[current_tail]) T(std::forward<Args>(args)...);
+  tail.store(next_tail, std::memory_order_release);
+  return true;
+}
+
+template <typename T>
 bool SPSCRingBuffer<T>::tryPop(T& value) {
   const size_t current_head = head.load(std::memory_order_relaxed);
-
   if (current_head == tail.load(std::memory_order_acquire)) return false;
 
-  value = std::move(buffer[current_head]);
+  T* elem = &buffer[current_head];
+  value.~T();
+  new (&value) T(std::move(*elem));
+  elem->~T();
+
   head.store((current_head + 1) % capacity, std::memory_order_release);
   return true;
 }
