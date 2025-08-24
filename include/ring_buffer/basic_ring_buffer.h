@@ -63,10 +63,12 @@ bool BasicRingBuffer<T>::tryEmplace(Args &&...args) {
 template <typename T>
 bool BasicRingBuffer<T>::tryPop(T &value) {
   if (head == tail) return false;
+
   T *elem = &buffer[head];
   value.~T();
   new (&value) T(std::move(*elem));
   elem->~T();
+
   head = (head + 1) % capacity;
   return true;
 }
