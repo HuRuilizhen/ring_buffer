@@ -22,9 +22,10 @@ class alignas(Common::CACHELINE_SIZE) MPMCRingBuffer {
  public:
   explicit MPMCRingBuffer(size_t cap,
                           std::size_t align = Common::CACHELINE_SIZE);
-
   bool tryPush(const T& value);
   bool tryPush(T&& value);
+  template <typename... Args>
+  bool tryEmplace(Args&&... args);
   bool tryPop(T& value);
 };
 
@@ -63,10 +64,25 @@ bool MPMCRingBuffer<T>::tryPush(T&& value) {
 }
 
 template <typename T>
+template <typename... Args>
+bool MPMCRingBuffer<T>::tryEmplace(Args&&... args) {
+  std::lock_guard<std::mutex> lock(mtx);
+  if (((tail + 1) % capacity) == head) return false;
+  new (&buffer[tail]) T(std::forward<Args>(args)...);
+  tail = (tail + 1) % capacity;
+  return true;
+}
+
+template <typename T>
 bool MPMCRingBuffer<T>::tryPop(T& value) {
   std::lock_guard<std::mutex> lock(mtx);
   if (head == tail) return false;
-  value = std::move(buffer[head]);
+
+  T* elem = &buffer[head];
+  value.~T();
+  new (&value) T(std::move(*elem));
+  elem->~T();
+
   head = (head + 1) % capacity;
   return true;
 }
