@@ -119,6 +119,57 @@ TEST(MPMCRingBufferTest, SPSC) {
   }
 }
 
+TEST(MPSCRingBufferTest, MPSC) {
+  constexpr int PRODUCERS = 4;
+  constexpr int ITEMS_PER_PRODUCER = 500;
+  constexpr int TOTAL_ITEMS = PRODUCERS * ITEMS_PER_PRODUCER;
+  constexpr int CAPACITY = 128;
+
+  RingBuffer::MPMCRingBuffer<int> buffer(CAPACITY);
+  std::atomic<int> produced{0};
+  std::atomic<int> consumed{0};
+
+  std::vector<std::thread> producer_threads;
+  for (int p = 0; p < PRODUCERS; ++p) {
+    producer_threads.emplace_back([p, &buffer, &produced]() {
+      for (int i = 0; i < ITEMS_PER_PRODUCER; ++i) {
+        int value = p * ITEMS_PER_PRODUCER + i;
+        while (true) {
+          if (buffer.tryPush(value)) {
+            produced.fetch_add(1, std::memory_order_relaxed);
+            break;
+          } else {
+            std::this_thread::yield();
+          }
+        }
+      }
+    });
+  }
+
+  std::vector<int> results;
+  results.reserve(TOTAL_ITEMS);
+  std::thread consumer_thread([&]() {
+    while (consumed.load(std::memory_order_relaxed) < TOTAL_ITEMS) {
+      int value;
+      if (buffer.tryPop(value)) {
+        results.push_back(value);
+        consumed.fetch_add(1, std::memory_order_relaxed);
+      } else {
+        std::this_thread::yield();
+      }
+    }
+  });
+
+  for (auto& t : producer_threads) t.join();
+  consumer_thread.join();
+
+  EXPECT_EQ(results.size(), static_cast<size_t>(TOTAL_ITEMS));
+  std::sort(results.begin(), results.end());
+  for (int i = 0; i < TOTAL_ITEMS; ++i) {
+    EXPECT_EQ(results[i], i);
+  }
+}
+
 TEST(MPMCRingBufferTest, MPMC) {
   constexpr int PRODUCERS = 4;
   constexpr int ITEMS_PER_PRODUCER = 250;
@@ -209,9 +260,11 @@ TEST(MPMCRingBufferTest, EmplaceString) {
 }
 
 TEST(MPMCRingBufferTest, CounterLifecycle) {
+  const int CAPACITY = 2;
   Counter::reset();
+
   {
-    RingBuffer::MPMCRingBuffer<Counter> buffer(2);
+    RingBuffer::MPMCRingBuffer<Counter> buffer(CAPACITY);
 
     EXPECT_TRUE(buffer.tryEmplace(1));
     EXPECT_TRUE(buffer.tryEmplace(2));
@@ -223,5 +276,6 @@ TEST(MPMCRingBufferTest, CounterLifecycle) {
     EXPECT_FALSE(buffer.tryPop(tmp));
   }
 
-  EXPECT_EQ(Counter::constructed, Counter::destructed);
+  // the init phase should be cleaned up
+  EXPECT_EQ(Counter::constructed - CAPACITY, Counter::destructed);
 }

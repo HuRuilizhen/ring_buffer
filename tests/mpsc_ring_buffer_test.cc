@@ -82,6 +82,41 @@ TEST(MPSCRingBufferTest, WrapAround) {
   EXPECT_FALSE(buffer.tryPop(value));
 }
 
+TEST(SPSCRingBufferTest, SPSC) {
+  constexpr int ITERATIONS = 10000;
+  constexpr int CAPACITY = 128;
+  RingBuffer::MPSCRingBuffer<int> buffer(CAPACITY);
+
+  std::thread producer([&]() {
+    for (int i = 0; i < ITERATIONS; ++i) {
+      while (true) {
+        if (buffer.tryPush(i)) break;
+        std::this_thread::yield();
+      }
+    }
+  });
+
+  std::vector<int> results;
+  results.reserve(ITERATIONS);
+  std::thread consumer([&]() {
+    int value;
+    for (int i = 0; i < ITERATIONS; ++i) {
+      while (true) {
+        if (buffer.tryPop(value)) break;
+        std::this_thread::yield();
+      }
+      results.push_back(value);
+    }
+  });
+
+  producer.join();
+  consumer.join();
+
+  for (int i = 0; i < ITERATIONS; ++i) {
+    EXPECT_EQ(results[i], i);
+  }
+}
+
 TEST(MPSCRingBufferTest, MPSC) {
   constexpr int PRODUCERS = 4;
   constexpr int ITEMS_PER_PRODUCER = 500;

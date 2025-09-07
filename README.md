@@ -7,7 +7,8 @@ A header-only C++20 ring buffer library providing several synchronization strate
 ## Features
 
 - Basic, SPSC, MPSC and MPMC variants
-- Implementations using mutexes, atomics and semi-atomic slots
+- Line cache friendly memory layout
+- Implementations using atomics and slots
 - Simple integration through CMake's `find_package`
 
 ## Requirements
@@ -111,7 +112,7 @@ target_link_libraries(
 | `BasicRingBuffer<T>` | Basic | None (single-thread only) |
 | `SPSCRingBuffer<T>`  | SPSC  | atomics                   |
 | `MPSCRingBuffer<T>`  | MPSC  | atomics + slots           |
-| `MPMCRingBuffer<T>`  | MPMC  | mutex                     |
+| `MPMCRingBuffer<T>`  | MPMC  | atomics + slots           |
 
 **Common API** (all variants):
 
