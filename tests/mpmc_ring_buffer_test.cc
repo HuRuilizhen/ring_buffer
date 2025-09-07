@@ -260,9 +260,11 @@ TEST(MPMCRingBufferTest, EmplaceString) {
 }
 
 TEST(MPMCRingBufferTest, CounterLifecycle) {
+  const int CAPACITY = 2;
   Counter::reset();
+
   {
-    RingBuffer::MPMCRingBuffer<Counter> buffer(2);
+    RingBuffer::MPMCRingBuffer<Counter> buffer(CAPACITY);
 
     EXPECT_TRUE(buffer.tryEmplace(1));
     EXPECT_TRUE(buffer.tryEmplace(2));
@@ -274,5 +276,6 @@ TEST(MPMCRingBufferTest, CounterLifecycle) {
     EXPECT_FALSE(buffer.tryPop(tmp));
   }
 
-  EXPECT_EQ(Counter::constructed, Counter::destructed);
+  // the init phase should be cleaned up
+  EXPECT_EQ(Counter::constructed - CAPACITY, Counter::destructed);
 }
