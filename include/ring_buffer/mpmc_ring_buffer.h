@@ -27,11 +27,11 @@ class alignas(Common::CACHELINE_SIZE) MPMCRingBuffer {
  public:
   explicit MPMCRingBuffer(size_t cap,
                           std::size_t align = Common::CACHELINE_SIZE);
-  bool tryPush(const T &value);
-  bool tryPush(T &&value);
+  bool tryPush(const T& value);
+  bool tryPush(T&& value);
   template <typename... Args>
-  bool tryEmplace(Args &&...args);
-  bool tryPop(T &value);
+  bool tryEmplace(Args&&... args);
+  bool tryPop(T& value);
 };
 
 }  // namespace RingBuffer
@@ -45,7 +45,7 @@ MPMCRingBuffer<T>::MPMCRingBuffer(size_t cap, std::size_t align)
       buffer(nullptr, Common::AlignedDeleter{align}) {
   if (cap == 0) throw std::invalid_argument("Capacity must be greater than 0");
 
-  Slot *raw = static_cast<Slot *>(
+  Slot* raw = static_cast<Slot*>(
       ::operator new[](capacity * sizeof(Slot), std::align_val_t(align)));
   for (size_t i = 0; i < capacity; ++i) {
     new (&raw[i]) Slot{.seq = i};  // placement new
@@ -54,11 +54,11 @@ MPMCRingBuffer<T>::MPMCRingBuffer(size_t cap, std::size_t align)
 }
 
 template <typename T>
-bool MPMCRingBuffer<T>::tryPush(const T &value) {
+bool MPMCRingBuffer<T>::tryPush(const T& value) {
   size_t pos = tail.load(std::memory_order_relaxed);
 
   while (true) {
-    Slot &slot = buffer[pos % capacity];
+    Slot& slot = buffer[pos % capacity];
     size_t expected = pos;
 
     if (slot.seq.load(std::memory_order_acquire) != expected) {
@@ -74,11 +74,11 @@ bool MPMCRingBuffer<T>::tryPush(const T &value) {
 }
 
 template <typename T>
-bool MPMCRingBuffer<T>::tryPush(T &&value) {
+bool MPMCRingBuffer<T>::tryPush(T&& value) {
   size_t pos = tail.load(std::memory_order_relaxed);
 
   while (true) {
-    Slot &slot = buffer[pos % capacity];
+    Slot& slot = buffer[pos % capacity];
     size_t expected = pos;
 
     if (slot.seq.load(std::memory_order_acquire) != expected) {
@@ -95,11 +95,11 @@ bool MPMCRingBuffer<T>::tryPush(T &&value) {
 
 template <typename T>
 template <typename... Args>
-bool MPMCRingBuffer<T>::tryEmplace(Args &&...args) {
+bool MPMCRingBuffer<T>::tryEmplace(Args&&... args) {
   size_t pos = tail.load(std::memory_order_relaxed);
 
   while (true) {
-    Slot &slot = buffer[pos % capacity];
+    Slot& slot = buffer[pos % capacity];
     size_t expected = pos;
 
     if (slot.seq.load(std::memory_order_acquire) != expected) {
@@ -115,11 +115,11 @@ bool MPMCRingBuffer<T>::tryEmplace(Args &&...args) {
 }
 
 template <typename T>
-bool MPMCRingBuffer<T>::tryPop(T &value) {
+bool MPMCRingBuffer<T>::tryPop(T& value) {
   size_t pos = head.load(std::memory_order_relaxed);
 
   while (true) {
-    Slot &slot = buffer[pos % capacity];
+    Slot& slot = buffer[pos % capacity];
     size_t expected = pos + 1;
 
     if (slot.seq.load(std::memory_order_acquire) != expected) {
@@ -127,7 +127,7 @@ bool MPMCRingBuffer<T>::tryPop(T &value) {
     }
 
     if (head.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed)) {
-      T *elem = &(slot.data);
+      T* elem = &(slot.data);
       value.~T();
       new (&value) T(std::move(*elem));
       elem->~T();

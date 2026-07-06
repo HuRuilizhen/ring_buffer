@@ -2,20 +2,28 @@
 
 ![Build Status](https://img.shields.io/github/actions/workflow/status/HuRuilizhen/ring_buffer/cmake-multi-platform.yml?branch=release)
 
-A header-only C++20 ring buffer library providing several synchronization strategies. Unit tests and microbenchmarks are included.
+A header-only C++20 ring buffer library providing several synchronization
+strategies. Unit tests and microbenchmarks are included. Designed for easy
+integration via CMake's `find_package` or `FetchContent`.
 
 ## Features
 
-- Basic, SPSC, MPSC and MPMC variants
-- Line cache friendly memory layout
-- Implementations using atomics and slots
-- Simple integration through CMake's `find_package`
+- Basic, SPSC, MPSC, and MPMC variants
+- Cache-friendly memory layout
+- Atomics- and slot-based synchronization strategies
+- CMake-friendly integration through `find_package` or `FetchContent`
 
 ## Requirements
 
-- C++20 compatible compiler
+- C++20-compatible compiler
 - CMake >= 3.15
 - (Optional) GoogleTest for unit tests
+- (Optional) A CMake version recent enough to support presets for the
+  recommended development workflow
+
+`ENABLE_TESTS` and `ENABLE_BENCHMARKS` are deprecated compatibility aliases
+for top-level builds. Prefer the prefixed options below so embedded builds do
+not collide with parent projects.
 
 ## Table of Contents
 
@@ -26,7 +34,7 @@ A header-only C++20 ring buffer library providing several synchronization strate
   - [Building](#building)
     - [Configuration](#configuration)
     - [Execution](#execution)
-  - [Runing Benchmarks](#runing-benchmarks)
+  - [Running Benchmarks](#running-benchmarks)
   - [Running Tests](#running-tests)
   - [Using the Library](#using-the-library)
     - [Including the Library](#including-the-library)
@@ -43,66 +51,79 @@ A header-only C++20 ring buffer library providing several synchronization strate
 
 | Option                          | Default | Description                               |
 | ------------------------------- | ------- | ----------------------------------------- |
-| `ENABLE_TESTS`                  | OFF     | Build unit tests (requires GTest)         |
-| `ENABLE_BENCHMARKS`             | OFF     | Build microbenchmarks                     |
+| `RING_BUFFER_BUILD_TESTS`       | OFF     | Build unit tests (requires GTest)         |
+| `RING_BUFFER_BUILD_BENCHMARKS`  | OFF     | Build microbenchmarks                     |
 | `CMAKE_EXPORT_COMPILE_COMMANDS` | OFF     | Generate `compile_commands.json` for IDEs |
 
 ### Execution
 
 ```bash
-# Default build
-cmake -S . -B build
+# Recommended development build
+cmake --preset debug
+cmake --build --preset debug
+
+# Release build
+cmake --preset release
+cmake --build --preset release
+
+# Run tests
+ctest --preset debug
+
+# Build with tests + benchmarks explicitly enabled
+cmake -S . -B build \
+  -DRING_BUFFER_BUILD_TESTS=ON \
+  -DRING_BUFFER_BUILD_BENCHMARKS=ON
 cmake --build build
 
-# Build with tests + benchmarks
-cmake -S . -B build -DENABLE_TESTS=ON -DENABLE_BENCHMARKS=ON
-cmake --build build
+# Top-level compatibility aliases still work, but are deprecated
+cmake -S . -B build/compat \
+  -DENABLE_TESTS=ON \
+  -DENABLE_BENCHMARKS=ON
 
-# Install
-sudo cmake --install build
+# Install from a configured build tree
+sudo cmake --install build/release
 ```
 
-## Runing Benchmarks
+## Running Benchmarks
 
 ```bash
-cd ./build/bin && ./ring_buffer_benchmark
+./build/debug/bin/ring_buffer_benchmark
 ```
 
 ## Running Tests
 
 ```bash
-cd ./build && ctest --output-on-failure
+ctest --preset debug
 ```
 
 ## Using the Library
 
 ### Including the Library
 
-After installation or fetching you can import the target in your own project:
+Without installation, pull `ring_buffer` via `FetchContent`:
 
 ```cmake
-find_package(ring_buffer QUIET)
+include(FetchContent)
 
-if(ring_buffer_FOUND)
-  message(STATUS "Found local ring_buffer: using ring_buffer::ring_buffer")
-else()
-  message(STATUS "ring_buffer not found locally; fetching via FetchContent")
+FetchContent_Declare(
+  ring_buffer
+  GIT_REPOSITORY https://github.com/HuRuilizhen/ring_buffer.git
+  GIT_TAG        v0.1.1
+)
 
-  include(FetchContent)
-  FetchContent_Declare(
-    ring_buffer
-    GIT_REPOSITORY https://github.com/HuRuilizhen/ring_buffer.git
-    GIT_TAG v0.1.0)  # latest stable version
-  FetchContent_MakeAvailable(ring_buffer)
-endif()
+FetchContent_MakeAvailable(ring_buffer)
 
-add_library(your_target STATIC src/your_target.cc)
-target_include_directories(
-  your_target PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                      $<INSTALL_INTERFACE:include>)
-target_link_libraries(
-  your_target PUBLIC $<$<BOOL:${ring_buffer_FOUND}>:ring_buffer::ring_buffer>
-                      $<$<NOT:$<BOOL:${ring_buffer_FOUND}>>:ring_buffer>)
+add_executable(my_app main.cpp)
+target_link_libraries(my_app PRIVATE ring_buffer::ring_buffer)
+```
+
+or after installation:
+
+```cmake
+find_package(ring_buffer CONFIG REQUIRED)
+
+add_executable(my_app main.cpp)
+target_link_libraries(my_app PRIVATE ring_buffer::ring_buffer)
 ```
 
 ### Supported APIs
@@ -127,8 +148,8 @@ bool tryPop(T& value);
 ### Quick Example
 
 ```cpp
-#include <ring_buffer/basic_ring_buffer.h>
 #include <iostream>
+#include <ring_buffer/basic_ring_buffer.h>
 
 int main() {
   RingBuffer::BasicRingBuffer<int> rb(3);
@@ -156,7 +177,7 @@ sudo cmake --build build --target uninstall_ring_buffer
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues or pull requests on GitHub.
+Contributions are welcome. Feel free to open issues or pull requests on GitHub.
 
 ## License
 
