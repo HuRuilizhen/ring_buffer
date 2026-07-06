@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(
   ring_buffer
-  VERSION 0.1.0
+  VERSION 0.1.1
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -11,15 +11,41 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+set(RING_BUFFER_TOP_LEVEL OFF)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(RING_BUFFER_TOP_LEVEL ON)
+endif()
+
 add_library(ring_buffer INTERFACE)
 target_include_directories(
   ring_buffer INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                         $<INSTALL_INTERFACE:include>)
 
-option(ENABLE_BENCHMARKS "Enable benchmarks" OFF)
+option(RING_BUFFER_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(RING_BUFFER_BUILD_TESTS "Build tests" OFF)
 
-if(ENABLE_BENCHMARKS)
-  message(STATUS "Benchmakes enabled")
+if(RING_BUFFER_TOP_LEVEL)
+  if(DEFINED ENABLE_BENCHMARKS)
+    message(
+      DEPRECATION
+        "ENABLE_BENCHMARKS is deprecated; use RING_BUFFER_BUILD_BENCHMARKS instead.")
+    set(RING_BUFFER_BUILD_BENCHMARKS
+        "${ENABLE_BENCHMARKS}"
+        CACHE BOOL "Build benchmarks" FORCE)
+  endif()
+
+  if(DEFINED ENABLE_TESTS)
+    message(
+      DEPRECATION
+        "ENABLE_TESTS is deprecated; use RING_BUFFER_BUILD_TESTS instead.")
+    set(RING_BUFFER_BUILD_TESTS
+        "${ENABLE_TESTS}"
+        CACHE BOOL "Build tests" FORCE)
+  endif()
+endif()
+
+if(RING_BUFFER_BUILD_BENCHMARKS)
+  message(STATUS "Benchmarks enabled")
 
   add_executable(
     ring_buffer_benchmark
@@ -28,9 +54,7 @@ if(ENABLE_BENCHMARKS)
   target_link_libraries(ring_buffer_benchmark PRIVATE ring_buffer)
 endif()
 
-option(ENABLE_TESTS "Enable tests" OFF)
-
-if(ENABLE_TESTS)
+if(RING_BUFFER_BUILD_TESTS)
   message(STATUS "Tests enabled")
 
   include(FetchContent)
@@ -41,6 +65,9 @@ if(ENABLE_TESTS)
 
   set(gtest_force_shared_crt
       ON
+      CACHE BOOL "" FORCE)
+  set(INSTALL_GTEST
+      OFF
       CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
   enable_testing()
@@ -58,8 +85,8 @@ if(ENABLE_TESTS)
   target_link_libraries(mpmc_ring_buffer_test PRIVATE ring_buffer
                                                       GTest::gtest_main)
 
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL
-                                              "GNU")
+  if(NOT WIN32 AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang"
+                    OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
 
     if(APPLE)
       set(SANITIZER_FLAGS "-fsanitize=address,undefined")
@@ -81,12 +108,15 @@ if(ENABLE_TESTS)
   add_test(NAME spsc_ring_buffer_test COMMAND spsc_ring_buffer_test)
   add_test(NAME mpsc_ring_buffer_test COMMAND mpsc_ring_buffer_test)
   add_test(NAME mpmc_ring_buffer_test COMMAND mpmc_ring_buffer_test)
-endif(ENABLE_TESTS)
+endif()
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-install(TARGETS ring_buffer EXPORT ring_bufferTargets)
+install(
+  TARGETS ring_buffer
+  EXPORT ring_bufferTargets
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(

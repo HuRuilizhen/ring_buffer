@@ -2,3 +2,4 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/ring_bufferTargets.cmake")
 
+check_required_components(ring_buffer)
