@@ -85,8 +85,8 @@ if(RING_BUFFER_BUILD_TESTS)
   target_link_libraries(mpmc_ring_buffer_test PRIVATE ring_buffer
                                                       GTest::gtest_main)
 
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL
-                                              "GNU")
+  if(NOT WIN32 AND (CMAKE_CXX_COMPILER_ID MATCHES "Clang"
+                    OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
 
     if(APPLE)
       set(SANITIZER_FLAGS "-fsanitize=address,undefined")
