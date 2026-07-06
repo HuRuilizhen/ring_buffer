@@ -21,10 +21,6 @@ integration via CMake's `find_package` or `FetchContent`.
 - (Optional) A CMake version recent enough to support presets for the
   recommended development workflow
 
-`ENABLE_TESTS` and `ENABLE_BENCHMARKS` are deprecated compatibility aliases
-for top-level builds. Prefer the prefixed options below so embedded builds do
-not collide with parent projects.
-
 ## Table of Contents
 
 - [ring\_buffer](#ring_buffer)
@@ -74,11 +70,6 @@ cmake -S . -B build \
   -DRING_BUFFER_BUILD_TESTS=ON \
   -DRING_BUFFER_BUILD_BENCHMARKS=ON
 cmake --build build
-
-# Top-level compatibility aliases still work, but are deprecated
-cmake -S . -B build/compat \
-  -DENABLE_TESTS=ON \
-  -DENABLE_BENCHMARKS=ON
 
 # Install from a configured build tree
 sudo cmake --install build/release

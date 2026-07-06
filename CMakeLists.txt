@@ -11,11 +11,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-set(RING_BUFFER_TOP_LEVEL OFF)
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-  set(RING_BUFFER_TOP_LEVEL ON)
-endif()
-
 add_library(ring_buffer INTERFACE)
 target_include_directories(
   ring_buffer INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -23,26 +18,6 @@ target_include_directories(
 
 option(RING_BUFFER_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(RING_BUFFER_BUILD_TESTS "Build tests" OFF)
-
-if(RING_BUFFER_TOP_LEVEL)
-  if(DEFINED ENABLE_BENCHMARKS)
-    message(
-      DEPRECATION
-        "ENABLE_BENCHMARKS is deprecated; use RING_BUFFER_BUILD_BENCHMARKS instead.")
-    set(RING_BUFFER_BUILD_BENCHMARKS
-        "${ENABLE_BENCHMARKS}"
-        CACHE BOOL "Build benchmarks" FORCE)
-  endif()
-
-  if(DEFINED ENABLE_TESTS)
-    message(
-      DEPRECATION
-        "ENABLE_TESTS is deprecated; use RING_BUFFER_BUILD_TESTS instead.")
-    set(RING_BUFFER_BUILD_TESTS
-        "${ENABLE_TESTS}"
-        CACHE BOOL "Build tests" FORCE)
-  endif()
-endif()
 
 if(RING_BUFFER_BUILD_BENCHMARKS)
   message(STATUS "Benchmarks enabled")
